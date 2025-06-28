@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import config, { loadConfig } from "../api/config"; // импорт конфига
+import config, { loadConfig } from "../api/config";
 
 function QrForm() {
-  const [data, setData] = useState(""); 
+  const [data, setData] = useState("");
   const [color, setColor] = useState("#000000");
   const [bgColor, setBgColor] = useState("#ffffff");
   const [boxSize, setBoxSize] = useState(10);
@@ -12,8 +12,8 @@ function QrForm() {
   const [loading, setLoading] = useState(false);
   const [qrImage, setQrImage] = useState(null);
   const [error, setError] = useState(null);
+  const [generatedUrl, setGeneratedUrl] = useState(""); // Ссылка с сервера
 
-  // Подгружаем конфиг один раз при монтировании компонента
   useEffect(() => {
     if (!config.BACKEND_DOMAIN) {
       loadConfig();
@@ -36,6 +36,7 @@ function QrForm() {
     setLoading(true);
     setError(null);
     setQrImage(null);
+    setGeneratedUrl("");
 
     if (!data.trim()) {
       setError("Пожалуйста, введите данные для генерации QR-кода");
@@ -43,8 +44,10 @@ function QrForm() {
       return;
     }
 
+    const normalized = normalizeInput(data);
+
     const payload = {
-      url: normalizeInput(data),
+      url: normalized,
       color,
       bg_color: bgColor,
       box_size: boxSize,
@@ -52,12 +55,9 @@ function QrForm() {
     };
 
     try {
-      // Используем полный URL из конфига
-      const response = await axios.post(
-        `${config.BACKEND_DOMAIN}/api/generate`,
-        payload
-      );
+      const response = await axios.post(`${config.BACKEND_DOMAIN}/api/generate`, payload);
       setQrImage(response.data.qr_image_base64);
+      setGeneratedUrl(response.data.short_url); // <-- Вот тут ссылка из ответа сервера
     } catch {
       setError("Ошибка генерации QR-кода");
     } finally {
@@ -159,6 +159,29 @@ function QrForm() {
             alt="QR код"
             className="inline-block border border-gray-300 dark:border-gray-600"
           />
+          <div className="mt-2">
+            <a
+              href={generatedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline break-words"
+            >
+              {generatedUrl}
+            </a>
+          </div>
+          <button
+            onClick={() => {
+              const link = document.createElement("a");
+              link.href = `data:image/png;base64,${qrImage}`;
+              link.download = "qrcode.png";
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded font-semibold transition"
+          >
+            Скачать PNG
+          </button>
         </div>
       )}
     </form>
