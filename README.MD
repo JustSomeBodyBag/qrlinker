@@ -57,6 +57,7 @@ npm start
 Frontend will be available at: http://localhost:3000
 
 🌍 Project Structure
+```
 qrlinker/
 ├── backend/
 │   ├── app.py
@@ -73,7 +74,7 @@ qrlinker/
 │   │   └── App.jsx
 │   └── ...
 └── README.md
-
+```
 # Node
 node_modules/
 dist/
