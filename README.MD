@@ -24,7 +24,7 @@ QRLinker is a full-featured web application for generating QR codes and tracking
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/qrlinker.git
+git clone https://github.com/JustSomeBodyBag/qrlinker.git
 cd qrlinker
 2. Backend Setup (Flask) 
 ```
@@ -33,7 +33,6 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate     # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-Create a config.py file inside backend/ with contents similar to:
 ```
 
 ```python
@@ -47,9 +46,7 @@ Make sure your Flask app loads this config, e.g.:
 ```
 Run the server:
 ```bash
-Копировать
-Редактировать
-flask run
+python app.py
 ```
 3. Frontend Setup (React)
 ```bash
