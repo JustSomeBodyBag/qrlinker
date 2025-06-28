@@ -12,6 +12,7 @@ import {
   PointElement,
 } from "chart.js";
 import { Bar, Line } from "react-chartjs-2";
+import { motion } from "framer-motion";
 
 ChartJS.register(
   CategoryScale,
@@ -31,16 +32,16 @@ function Dashboard({ qrId }) {
     axios.get(`/api/stats/${qrId}`).then((res) => setStats(res.data)).catch(console.error);
   }, [qrId]);
 
-  if (!stats) return <div>Загрузка данных...</div>;
+  if (!stats) return <div className="text-center text-gray-500 dark:text-gray-300 py-10">Loading data...</div>;
 
   const dates = Object.keys(stats.by_date).sort();
   const scansByDate = dates.map((d) => stats.by_date[d]);
 
   const devicesData = {
-    labels: ["Мобильные", "Десктопы"],
+    labels: ["Mobile", "Desktop"],
     datasets: [
       {
-        label: "Переходы",
+        label: "Scans",
         data: [stats.devices.mobile, stats.devices.desktop],
         backgroundColor: ["#36A2EB", "#FF6384"],
       },
@@ -51,7 +52,7 @@ function Dashboard({ qrId }) {
     labels: dates,
     datasets: [
       {
-        label: "Переходы по датам",
+        label: "Scans over Time",
         data: scansByDate,
         fill: false,
         borderColor: "rgb(75, 192, 192)",
@@ -61,20 +62,29 @@ function Dashboard({ qrId }) {
   };
 
   return (
-    <div style={{ maxWidth: 800, margin: "auto" }}>
-      <h2>Аналитика по QR-коду #{qrId}</h2>
-      <p>Общее число переходов: {stats.total}</p>
+    <motion.div
+      className="max-w-3xl mx-auto px-4 py-10 bg-white dark:bg-gray-800 rounded-2xl shadow"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <h2 className="text-2xl font-semibold mb-2 text-gray-800 dark:text-white">
+        Analytics for QR #{qrId}
+      </h2>
+      <p className="mb-6 text-gray-700 dark:text-gray-300">
+        Total Scans: <strong>{stats.total}</strong>
+      </p>
 
-      <div style={{ marginBottom: 40 }}>
-        <h3>Переходы по устройствам</h3>
+      <div className="mb-8">
+        <h3 className="text-lg font-medium mb-2 text-gray-700 dark:text-gray-300">Scans by Device</h3>
         <Bar data={devicesData} />
       </div>
 
       <div>
-        <h3>Переходы по датам</h3>
+        <h3 className="text-lg font-medium mb-2 text-gray-700 dark:text-gray-300">Scans by Date</h3>
         <Line data={dateData} />
       </div>
-    </div>
+    </motion.div>
   );
 }
 

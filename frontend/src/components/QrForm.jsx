@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import config, { loadConfig } from "../api/config";
+import { Download, Clipboard } from "lucide-react";
 
 function QrForm() {
   const [data, setData] = useState("");
@@ -11,8 +12,9 @@ function QrForm() {
 
   const [loading, setLoading] = useState(false);
   const [qrImage, setQrImage] = useState(null);
+  const [shortUrl, setShortUrl] = useState(null);
   const [error, setError] = useState(null);
-  const [generatedUrl, setGeneratedUrl] = useState(""); // Ссылка с сервера
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!config.BACKEND_DOMAIN) {
@@ -36,18 +38,16 @@ function QrForm() {
     setLoading(true);
     setError(null);
     setQrImage(null);
-    setGeneratedUrl("");
+    setShortUrl(null);
 
     if (!data.trim()) {
-      setError("Пожалуйста, введите данные для генерации QR-кода");
+      setError("Please enter something to generate QR code.");
       setLoading(false);
       return;
     }
 
-    const normalized = normalizeInput(data);
-
     const payload = {
-      url: normalized,
+      url: normalizeInput(data),
       color,
       bg_color: bgColor,
       box_size: boxSize,
@@ -55,62 +55,85 @@ function QrForm() {
     };
 
     try {
-      const response = await axios.post(`${config.BACKEND_DOMAIN}/api/generate`, payload);
+      const response = await axios.post(
+        `${config.BACKEND_DOMAIN}/api/generate`,
+        payload
+      );
       setQrImage(response.data.qr_image_base64);
-      setGeneratedUrl(response.data.short_url); // <-- Вот тут ссылка из ответа сервера
+      setShortUrl(response.data.short_url);
     } catch {
-      setError("Ошибка генерации QR-кода");
+      setError("Failed to generate QR code.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!qrImage) return;
+    const a = document.createElement("a");
+    a.href = `data:image/png;base64,${qrImage}`;
+    a.download = "qr-code.png";
+    a.click();
+  };
+
+  const copyToClipboard = () => {
+    if (shortUrl) {
+      navigator.clipboard.writeText(shortUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-6 max-w-md mx-auto bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow-md"
+      className="space-y-6 max-w-md mx-auto bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700"
     >
-      <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
-        Введите URL или любой текст для кодирования:
-      </label>
-      <textarea
-        rows={3}
-        placeholder="Например: https://example.com или просто 'Привет мир!'"
-        className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-        value={data}
-        onChange={(e) => setData(e.target.value)}
-      />
+      <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+        Generate a QR Code
+      </h2>
+
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          URL or Text
+        </label>
+        <textarea
+          rows={3}
+          placeholder="e.g. https://example.com"
+          className="w-full p-3 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          value={data}
+          onChange={(e) => setData(e.target.value)}
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
-            Цвет QR-кода:
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            QR Color
           </label>
           <input
             type="color"
             value={color}
             onChange={(e) => setColor(e.target.value)}
-            className="w-full h-10 p-0 border rounded cursor-pointer"
-            aria-label="Цвет QR-кода"
+            className="w-full h-10 p-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
-            Цвет фона:
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Background Color
           </label>
           <input
             type="color"
             value={bgColor}
             onChange={(e) => setBgColor(e.target.value)}
-            className="w-full h-10 p-0 border rounded cursor-pointer"
-            aria-label="Цвет фона"
+            className="w-full h-10 p-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
-            Размер квадратиков:
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Box Size
           </label>
           <input
             type="number"
@@ -118,14 +141,13 @@ function QrForm() {
             max={20}
             value={boxSize}
             onChange={(e) => setBoxSize(Number(e.target.value))}
-            className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            aria-label="Размер квадратиков"
+            className="w-full p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">
-            Толщина границы:
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Border
           </label>
           <input
             type="number"
@@ -133,8 +155,7 @@ function QrForm() {
             max={10}
             value={border}
             onChange={(e) => setBorder(Number(e.target.value))}
-            className="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            aria-label="Толщина границы"
+            className="w-full p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
         </div>
       </div>
@@ -142,46 +163,59 @@ function QrForm() {
       <button
         type="submit"
         disabled={loading || !config.BACKEND_DOMAIN}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-semibold disabled:opacity-50 transition"
+        className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50"
       >
-        {loading ? "Генерируем..." : "Создать QR-код"}
+        {loading ? "Generating..." : "Generate QR Code"}
       </button>
 
-      {error && <p className="mt-2 text-red-500 text-center">{error}</p>}
+      {error && <p className="text-red-500 text-center">{error}</p>}
 
       {qrImage && (
-        <div className="mt-6 text-center">
-          <h3 className="mb-2 text-lg font-semibold text-gray-800 dark:text-gray-100">
-            Ваш QR-код
+        <div className="mt-6 text-center space-y-4">
+          <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100">
+            Your QR Code
           </h3>
+
           <img
             src={`data:image/png;base64,${qrImage}`}
-            alt="QR код"
-            className="inline-block border border-gray-300 dark:border-gray-600"
+            alt="QR Code"
+            className="inline-block border border-gray-300 dark:border-gray-600 rounded-lg"
           />
-          <div className="mt-2">
-            <a
-              href={generatedUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline break-words"
+
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={handleDownload}
+              type="button"
+              className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition"
             >
-              {generatedUrl}
-            </a>
+              <Download className="w-4 h-4" />
+              Download PNG
+            </button>
           </div>
-          <button
-            onClick={() => {
-              const link = document.createElement("a");
-              link.href = `data:image/png;base64,${qrImage}`;
-              link.download = "qrcode.png";
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }}
-            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded font-semibold transition"
-          >
-            Скачать PNG
-          </button>
+
+          {shortUrl && (
+            <div className="flex items-center justify-center gap-2 text-blue-600 dark:text-blue-400">
+              <a
+                href={shortUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline break-all"
+              >
+                {shortUrl}
+              </a>
+              <button
+                onClick={copyToClipboard}
+                type="button"
+                className="hover:text-blue-800 dark:hover:text-white transition"
+                title="Copy to clipboard"
+              >
+                <Clipboard className="w-4 h-4" />
+              </button>
+              {copied && (
+                <span className="text-sm text-green-500 ml-2">Copied!</span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </form>
